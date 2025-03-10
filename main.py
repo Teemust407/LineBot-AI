@@ -1,51 +1,57 @@
 from fastapi import FastAPI, Request
-from pydantic import BaseModel
-import os
+import uvicorn
 import hashlib
 import hmac
+import os
+import json
 import requests
+from time_checker import get_snarky_message  # Import ฟังก์ชันเหน็บแนม
 
 app = FastAPI()
 
 # LINE Bot Credentials
-LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "YOUR_CHANNEL_SECRET")
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "YOUR_ACCESS_TOKEN")
-
-class LineWebhookEvent(BaseModel):
-    events: list
-
-def verify_signature(request: Request, body: str):
-    signature = request.headers.get("x-line-signature", "")
-    hash = hmac.new(LINE_CHANNEL_SECRET.encode(), body.encode(), hashlib.sha256).digest()
-    expected_signature = hashlib.base64.b64encode(hash).decode()
-    return hmac.compare_digest(signature, expected_signature)
-
-@app.get("/")
-def home():
-    return {"message": "Hello from FastAPI on Vercel with LINE Bot!"}
+CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "your_channel_secret")
+CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "your_access_token")
 
 @app.post("/webhook")
-async def line_webhook(request: Request, payload: LineWebhookEvent):
+async def line_webhook(request: Request):
+    """ Webhook รับข้อมูลจาก LINE Messaging API """
     body = await request.body()
-    if not verify_signature(request, body.decode()):
-        return {"message": "Signature verification failed"}, 400
+    hash_value = hmac.new(CHANNEL_SECRET.encode(), body, hashlib.sha256).digest()
+    signature = request.headers.get("X-Line-Signature")
 
-    for event in payload.events:
+    if not hmac.compare_digest(hash_value.hex(), signature):
+        return {"message": "Invalid signature"}, 403
+
+    body_data = json.loads(body)
+
+    for event in body_data.get("events", []):
         if event["type"] == "message" and "text" in event["message"]:
             reply_token = event["replyToken"]
             user_message = event["message"]["text"]
-            send_reply(reply_token, f"คุณพูดว่า: {user_message}")
+            
+            # ใช้ฟังก์ชัน get_snarky_message() สร้างข้อความตอบกลับ
+            snarky_reply = get_snarky_message()
+            reply_message(reply_token, snarky_reply)
 
     return {"message": "OK"}
 
-def send_reply(reply_token, message):
+def reply_message(reply_token, text):
+    """ ส่งข้อความกลับไปยัง LINE """
     url = "https://api.line.me/v2/bot/message/reply"
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
+        "Authorization": f"Bearer {CHANNEL_ACCESS_TOKEN}",
     }
-    data = {
+    payload = {
         "replyToken": reply_token,
-        "messages": [{"type": "text", "text": message}]
+        "messages": [{"type": "text", "text": text}]
     }
-    requests.post(url, json=data, headers=headers)
+    requests.post(url, headers=headers, json=payload)
+
+@app.get("/")
+async def root():
+    return {"message": "Hello from FastAPI on Vercel!"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
