@@ -1,51 +1,51 @@
-import os # Update
-from flask import Flask, request
-import datetime
-from linebot import LineBotApi, WebhookHandler
-from linebot.exceptions import InvalidSignatureError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
-from time_checker import get_message
+from fastapi import FastAPI, Request
+from pydantic import BaseModel
+import os
+import hashlib
+import hmac
+import requests
 
-# ดึงค่าจาก Environment Variables
-LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
-LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
+app = FastAPI()
 
-if not LINE_ACCESS_TOKEN or not LINE_CHANNEL_SECRET:
-    raise ValueError("❌ Missing LINE_ACCESS_TOKEN or LINE_CHANNEL_SECRET")
+# LINE Bot Credentials
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "YOUR_CHANNEL_SECRET")
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "YOUR_ACCESS_TOKEN")
 
-line_bot_api = LineBotApi(LINE_ACCESS_TOKEN)
-handler = WebhookHandler(LINE_CHANNEL_SECRET)
+class LineWebhookEvent(BaseModel):
+    events: list
 
-app = Flask(__name__)
+def verify_signature(request: Request, body: str):
+    signature = request.headers.get("x-line-signature", "")
+    hash = hmac.new(LINE_CHANNEL_SECRET.encode(), body.encode(), hashlib.sha256).digest()
+    expected_signature = hashlib.base64.b64encode(hash).decode()
+    return hmac.compare_digest(signature, expected_signature)
 
-@app.route("/")
+@app.get("/")
 def home():
-    return "✅ LINE Bot is running!"
+    return {"message": "Hello from FastAPI on Vercel with LINE Bot!"}
 
-@app.route("/callback", methods=["POST"])
-def callback():
-    signature = request.headers.get("X-Line-Signature")
-    body = request.get_data(as_text=True)
+@app.post("/webhook")
+async def line_webhook(request: Request, payload: LineWebhookEvent):
+    body = await request.body()
+    if not verify_signature(request, body.decode()):
+        return {"message": "Signature verification failed"}, 400
 
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        return "❌ Invalid signature", 400
+    for event in payload.events:
+        if event["type"] == "message" and "text" in event["message"]:
+            reply_token = event["replyToken"]
+            user_message = event["message"]["text"]
+            send_reply(reply_token, f"คุณพูดว่า: {user_message}")
 
-    return "OK", 200
+    return {"message": "OK"}
 
-@handler.add(MessageEvent, message=TextMessage)
-def handle_message(event):
-    user_message = event.message.text.lower()
-
-    if "เข้างาน" in user_message:
-        check_in_time = datetime.datetime.now().strftime("%H:%M:%S")
-        message = get_message()
-        reply_text = f"ลงเวลาเรียบร้อย 🕒 {check_in_time}\n{message}"
-    else:
-        reply_text = "พิมพ์ 'เข้างาน' เพื่อบันทึกเวลาเข้า-ออกงาน"
-
-    line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+def send_reply(reply_token, message):
+    url = "https://api.line.me/v2/bot/message/reply"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {LINE_CHANNEL_ACCESS_TOKEN}"
+    }
+    data = {
+        "replyToken": reply_token,
+        "messages": [{"type": "text", "text": message}]
+    }
+    requests.post(url, json=data, headers=headers)
