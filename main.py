@@ -4,15 +4,14 @@ import datetime
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
-from time_checker import get_message  # ตรวจสอบว่ามีไฟล์นี้จริง
+from time_checker import get_message
 
 # ดึงค่าจาก Environment Variables
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 
-# เช็กว่าค่าถูกต้องหรือไม่
 if not LINE_ACCESS_TOKEN or not LINE_CHANNEL_SECRET:
-    raise ValueError("Missing LINE_ACCESS_TOKEN or LINE_CHANNEL_SECRET")
+    raise ValueError("❌ Missing LINE_ACCESS_TOKEN or LINE_CHANNEL_SECRET")
 
 line_bot_api = LineBotApi(LINE_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
@@ -21,7 +20,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "Hello, this is your LINE Bot!"
+    return "✅ LINE Bot is running!"
 
 @app.route("/callback", methods=["POST"])
 def callback():
@@ -31,7 +30,7 @@ def callback():
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
-        return "Invalid signature", 400
+        return "❌ Invalid signature", 400
 
     return "OK", 200
 
