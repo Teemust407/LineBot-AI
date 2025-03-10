@@ -6,7 +6,7 @@ from datetime import datetime
 app = FastAPI()
 
 # ตั้งค่า LINE API
-LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
+LINE_ACCESS_TOKEN = os.environ.get("LINE_ACCESS_TOKEN")
 LINE_REPLY_URL = "https://api.line.me/v2/bot/message/reply"
 
 # ฟังก์ชันเลือกข้อความเหน็บแนม
