@@ -4,12 +4,11 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "main.py" }
-  ]
-}
-{
+  ],
   "build": {
     "env": {
-      "PYTHON_VERSION": "3.9"
+      "PYTHON_VERSION": "3.9",
+      "LINE_ACCESS_TOKEN": "your_line_access_token_here"
     }
   }
 }
