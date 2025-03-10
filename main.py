@@ -36,7 +36,7 @@ def handle_message(event):
     user_message = event.message.text.lower()
 
     if "เข้างาน" in user_message:
-        check_in_time = datetime.datetime.now().strftime("%H:%M:%S")
+        check_in_time = datetime.datetime.now().strftime("%H:%M:%S")  # UPDATE
         message = get_message()
         reply_text = f"ลงเวลาเรียบร้อย 🕒 {check_in_time}\n{message}"
     else:
