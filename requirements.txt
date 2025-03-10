@@ -1,6 +1,4 @@
-flask
-opencv-python-headless
-numpy
+fastapi
+uvicorn
 requests
-line-bot-sdk
 python-dotenv
