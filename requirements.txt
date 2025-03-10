@@ -1,4 +1,6 @@
 flask
-opencv-python
+opencv-python-headless
 numpy
 requests
+line-bot-sdk
+python-dotenv
