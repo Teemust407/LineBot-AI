@@ -1,57 +1,58 @@
 from fastapi import FastAPI, Request
-import uvicorn
-import hashlib
-import hmac
+import httpx
 import os
-import json
-import requests
-from time_checker import get_snarky_message  # Import ฟังก์ชันเหน็บแนม
+from datetime import datetime
 
 app = FastAPI()
 
-# LINE Bot Credentials
-CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "your_channel_secret")
-CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN", "your_access_token")
+# ตั้งค่า LINE API
+LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
+LINE_REPLY_URL = "https://api.line.me/v2/bot/message/reply"
 
+# ฟังก์ชันเลือกข้อความเหน็บแนม
+def get_snarky_message():
+    now = datetime.now()
+    if now.hour < 9:
+        return "โอ้โห! มาตรงเวลาด้วย แปลกใจจริง ๆ 🤔"
+    elif now.hour < 10:
+        return "แค่เกือบสายเอง 😏"
+    else:
+        return "สายอีกแล้ว! นาฬิกาปลุกงอนอยู่รึเปล่า? 😏"
+
+# Route สำหรับเช็คว่า API ทำงานหรือไม่
+@app.get("/")
+def read_root():
+    return {"message": "Hello from FastAPI on Vercel!"}
+
+# Route สำหรับรับ Webhook จาก LINE
 @app.post("/webhook")
 async def line_webhook(request: Request):
-    """ Webhook รับข้อมูลจาก LINE Messaging API """
-    body = await request.body()
-    hash_value = hmac.new(CHANNEL_SECRET.encode(), body, hashlib.sha256).digest()
-    signature = request.headers.get("X-Line-Signature")
+    body = await request.json()
+    
+    # ตรวจสอบว่ามี event ไหม
+    if "events" in body:
+        for event in body["events"]:
+            if event["type"] == "message":
+                reply_token = event["replyToken"]
+                user_message = event["message"]["text"]
 
-    if not hmac.compare_digest(hash_value.hex(), signature):
-        return {"message": "Invalid signature"}, 403
+                # ถ้าผู้ใช้ส่งข้อความ "เข้างาน" ให้ตอบกลับ
+                if user_message.strip() == "เข้างาน":
+                    reply_text = get_snarky_message()
+                    await reply_message(reply_token, reply_text)
 
-    body_data = json.loads(body)
+    return {"status": "ok"}
 
-    for event in body_data.get("events", []):
-        if event["type"] == "message" and "text" in event["message"]:
-            reply_token = event["replyToken"]
-            user_message = event["message"]["text"]
-            
-            # ใช้ฟังก์ชัน get_snarky_message() สร้างข้อความตอบกลับ
-            snarky_reply = get_snarky_message()
-            reply_message(reply_token, snarky_reply)
-
-    return {"message": "OK"}
-
-def reply_message(reply_token, text):
-    """ ส่งข้อความกลับไปยัง LINE """
-    url = "https://api.line.me/v2/bot/message/reply"
+# ฟังก์ชันส่งข้อความกลับไปที่ LINE
+async def reply_message(reply_token, text):
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {CHANNEL_ACCESS_TOKEN}",
+        "Authorization": f"Bearer {LINE_ACCESS_TOKEN}"
     }
     payload = {
         "replyToken": reply_token,
         "messages": [{"type": "text", "text": text}]
     }
-    requests.post(url, headers=headers, json=payload)
 
-@app.get("/")
-async def root():
-    return {"message": "Hello from FastAPI on Vercel!"}
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    async with httpx.AsyncClient() as client:
+        await client.post(LINE_REPLY_URL, json=payload, headers=headers)
