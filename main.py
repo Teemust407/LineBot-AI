@@ -7,8 +7,8 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 
 # ดึงค่าจาก Environment Variables บน Vercel
-LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
-LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
+LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN", "DEFAULT_VALUE")
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET", "DEFAULT_VALUE")
 
 line_bot_api = LineBotApi(LINE_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
