@@ -8,7 +8,7 @@
   "build": {
     "env": {
       "PYTHON_VERSION": "3.9",
-      "LINE_ACCESS_TOKEN": "your_line_access_token_here"
+      "LINE_ACCESS_TOKEN": "p+Of42gCiVtUSpzFUdhrdZK7LQ0tbiL99wjMFWgnZ0L1B5AnmPWoWQ31hWE9y3zU2vaYc/mgYGNLa9j3Pn1/nz35lOOMQhFyFoctIZ2PBThpOwTnJYWuumsJZe+pER5ShqL6Ca/W9zDAXFak7e389wdB04t89/1O/w1cDnyilFU="
     }
   }
 }
