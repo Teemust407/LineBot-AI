@@ -55,4 +55,5 @@ async def reply_message(reply_token, text):
     }
 
     async with httpx.AsyncClient() as client:
-        await client.post(LINE_REPLY_URL, json=payload, headers=headers)
+        response = await client.post(LINE_REPLY_URL, json=payload, headers=headers)
+        response.raise_for_status()  # เพิ่มการตรวจสอบสถานะการตอบกลับ
