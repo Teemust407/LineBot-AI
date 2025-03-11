@@ -5,11 +5,11 @@ from datetime import datetime
 
 app = FastAPI()
 
-# ตั้งค่า LINE API
+# Set LINE API token
 LINE_ACCESS_TOKEN = os.environ.get("LINE_ACCESS_TOKEN")
 LINE_REPLY_URL = "https://api.line.me/v2/bot/message/reply"
 
-# ฟังก์ชันเลือกข้อความเหน็บแนม
+# Function to get a snarky message
 def get_snarky_message():
     now = datetime.now()
     if now.hour < 9:
@@ -19,31 +19,29 @@ def get_snarky_message():
     else:
         return "สายอีกแล้ว! นาฬิกาปลุกงอนอยู่รึเปล่า? 😏"
 
-# Route สำหรับเช็คว่า API ทำงานหรือไม่
+# Route for checking if the API is working
 @app.get("/")
 def read_root():
-    return {"message": "Hello from FastAPI on Vercel!"}
+    return {"message": "Hello from FastAPI!"}
 
-# Route สำหรับรับ Webhook จาก LINE
+# Route for receiving webhook from LINE
 @app.post("/webhook")
 async def line_webhook(request: Request):
     body = await request.json()
     
-    # ตรวจสอบว่ามี event ไหม
     if "events" in body:
         for event in body["events"]:
             if event["type"] == "message":
                 reply_token = event["replyToken"]
                 user_message = event["message"]["text"]
 
-                # ถ้าผู้ใช้ส่งข้อความ "เข้างาน" ให้ตอบกลับ
                 if user_message.strip() == "เข้างาน":
                     reply_text = get_snarky_message()
                     await reply_message(reply_token, reply_text)
 
     return {"status": "ok"}
 
-# ฟังก์ชันส่งข้อความกลับไปที่ LINE
+# Function to reply to LINE
 async def reply_message(reply_token, text):
     headers = {
         "Content-Type": "application/json",
@@ -55,5 +53,4 @@ async def reply_message(reply_token, text):
     }
 
     async with httpx.AsyncClient() as client:
-        response = await client.post(LINE_REPLY_URL, json=payload, headers=headers)
-        response.raise_for_status()  # เพิ่มการตรวจสอบสถานะการตอบกลับ
+        await client.post(LINE_REPLY_URL, json=payload, headers=headers)
